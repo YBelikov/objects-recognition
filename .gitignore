@@ -1,5 +1,6 @@
 # Custom directories
 .idea/*
+yolo-env/*
 test-data/*
 results/*
 
