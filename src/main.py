@@ -1,6 +1,8 @@
 from ultralytics import YOLO
+
 import click
 import cv2
+
 
 DEFAULT_SOURCE_PATH = '../test-data/jj-jordan-jtZsFCvXS_g-unsplash.jpg'
 
