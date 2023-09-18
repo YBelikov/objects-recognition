@@ -46,8 +46,11 @@ class VideoStreamObjectRecognizer:
                 cropped_license_image = frame[int(license_y1):int(license_y2), int(license_x1):int(license_x2), :]
                 license_plate_crop_gray = cv2.cvtColor(cropped_license_image, cv2.COLOR_BGR2GRAY)
                 _, license_plate_crop_thresh = cv2.threshold(license_plate_crop_gray, 64, 255, cv2.THRESH_BINARY_INV)
-                bbox, text, precision = self.license_reader.readtext(license_plate_crop_gray)[0]
-                detected_license_plates_info.append([license_x1, license_y1, license_x2, license_y2, text])
+                result = self.license_reader.readtext(license_plate_crop_gray)
+                if not result:
+                    continue
+                _, text, confidence_score = result[0]
+                detected_license_plates_info.append([license_x1, license_y1, license_x2, license_y2, text, confidence_score])
 
             self.car_detection_info[frame_counter] = {'car_info' : detected_cars_info, 'plate_info' : detected_license_plates_info}
             frame_counter += 1
@@ -76,11 +79,11 @@ class VideoStreamObjectRecognizer:
             plates_info = bounding_boxes_info['plate_info']
             for car in cars_info:
                 car_x1, car_y1, car_x2, car_y2 = car[0], car[1], car[2], car[3]
-                cv2.rectangle(frame, (int(car_x1), int(car_y1)), (int(car_x2), int(car_y2)), (0, 0, 255), 12)
-                cv2.putText(frame, 'Car', (int(car_x1), int(car_y1) - 10), cv2.FONT_HERSHEY_PLAIN, 4.2, (255, 255, 255), 6)
+                cv2.rectangle(frame, (int(car_x1), int(car_y1)), (int(car_x2), int(car_y2)), (0, 0, 255), 4)
+                cv2.putText(frame, 'Car', (int(car_x1), int(car_y1) - 10), cv2.FONT_HERSHEY_PLAIN, 2.2, (255, 255, 255), 4)
             for plate in plates_info:
                 plate_x1, plate_y1, plate_x2, plate_y2, license = plate[0], plate[1], plate[2], plate[3], plate[4]
-                cv2.rectangle(frame, (int(plate_x1), int(plate_y1)), (int(plate_x2), int(plate_y2)), (0, 255, 0), 12)
-                cv2.putText(frame, license, (int(plate_x1), int(plate_y1) - 10), cv2.FONT_HERSHEY_PLAIN, 4.2, (255, 255, 255), 6)
+                cv2.rectangle(frame, (int(plate_x1), int(plate_y1)), (int(plate_x2), int(plate_y2)), (0, 255, 0), 4)
+                cv2.putText(frame, license, (int(plate_x1), int(plate_y1) - 10), cv2.FONT_HERSHEY_PLAIN, 2.2, (255, 255, 255), 4)
             out.write(frame)
         cap.release()
