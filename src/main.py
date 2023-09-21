@@ -15,7 +15,7 @@ from video_stream_object_recognizer import VideoStreamObjectRecognizer
 #
 
 def main():
-    video_stream_object_recognizer = VideoStreamObjectRecognizer('../test-data/phone_shooting.mp4', '../results')
+    video_stream_object_recognizer = VideoStreamObjectRecognizer('../test-data/rotation.mp4', '../results/rotation.mp4')
     video_stream_object_recognizer.process_video()
     video_stream_object_recognizer.release_processed_video()
 
