@@ -1,3 +1,6 @@
 ultralytics 
 opencv-python
 click
+easyocr
+filterpy
+pandas
