@@ -1,5 +1,4 @@
 import ntpath
-import click
 import os
 
 from video_stream_object_recognizer import VideoStreamObjectRecognizer
@@ -19,6 +18,8 @@ def path_last_component(path):
     head, tail = os.path.split(path)
     return tail or ntpath.basename(path)
 def main():
-    process_file()
+    input_file = '..\\test-data\\sample.mp4'
+    output_dir = '..\\results'
+    process_file(input_file, output_dir)
 if __name__ == '__main__':
     main()

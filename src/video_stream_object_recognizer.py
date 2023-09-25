@@ -5,7 +5,7 @@ import easyocr
 import pandas as pd
 import re
 
-DEBUG_FRAME_LIMIT = 500
+DEBUG_FRAME_LIMIT = 1000
 
 class VideoStreamObjectRecognizer:
     def __init__(self,
