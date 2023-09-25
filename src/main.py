@@ -1,12 +1,8 @@
 import ntpath
-import click
 import os
 
 from video_stream_object_recognizer import VideoStreamObjectRecognizer
 
-@click.command()
-@click.option('--source-path', prompt='Please, provide a path to a file for processing', help='A path to the target file')
-@click.option('--result-path', default='../results', help='A path to which the result is saved')
 def process_file(source_path, result_path):
     if not os.path.exists(source_path):
         print('The given input path does not exist')
@@ -22,6 +18,8 @@ def path_last_component(path):
     head, tail = os.path.split(path)
     return tail or ntpath.basename(path)
 def main():
-    process_file()
+    input_file = '..\\test-data\\sample.mp4'
+    output_dir = '..\\results'
+    process_file(input_file, output_dir)
 if __name__ == '__main__':
     main()
