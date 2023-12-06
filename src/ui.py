@@ -1,6 +1,8 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+from typing import Optional, Dict, List, Tuple
 
+from facenet_pytorch import MTCNN, InceptionResnetV1
 import PySimpleGUI as sg
 import numpy as np
 
@@ -93,6 +95,55 @@ class CarRecognizer:
 
         return x_overlap * y_overlap
 
+
+class FaceRecognizer:
+    def __init__(self) -> None:      
+        self.mtcnn = MTCNN(keep_all=True, device=DEVICE, min_face_size=50, image_size=244)
+        self.resnet = InceptionResnetV1(pretrained='vggface2', device=DEVICE).eval()
+        self.embeddings: Dict[str, np.ndarray] = {}
+
+    @torch.no_grad()
+    def __call__(self, frame: np.ndarray, frame_idx: int = None):
+        boxes, _ = self.mtcnn.detect(frame)
+        
+        if boxes is None:
+            return {}
+
+        aligned = self.mtcnn(frame).to(DEVICE)
+        embeddings = self.resnet(aligned).detach().cpu().numpy()
+        
+        boxes_dict = {}
+        for box, emb in zip(boxes, embeddings):
+            box_id = self._get_id(embeddings)
+            if box_id is None:
+                unk_idx = 0
+                while f"unk_{unk_idx}" in self.embeddings:
+                    unk_idx += 1
+                box_id = f"unk_{unk_idx}"
+
+            self.embeddings.setdefault(box_id, []).append(emb)
+            boxes_dict.update({box_id: box})    
+        
+        return boxes_dict
+    
+    def _get_id(self, emb) -> Optional[str]:
+        closest_emb = None
+        closest_norm = np.inf
+
+        for k, observed in self.embeddings.items():
+            for obs in observed:
+                cur_norm = np.linalg.norm(obs - emb)
+                if cur_norm < closest_norm:
+                    closest_emb = k
+                    closest_norm = cur_norm
+        
+        if closest_norm < 0.7:
+            return closest_emb
+        
+        print(f"FAILED with threshold: {closest_norm}")
+        return None
+
+
 class GUI:
     IMG_KEY = "-Image-"
     PROGRESSBAR_KEY = "-Image-Progress-"
@@ -106,10 +157,12 @@ class GUI:
         self.frames: FrameSource = None
         self.window: sg.Window = None
         self.car_recognizer: CarRecognizer = None
+        self.face_recognizer: FaceRecognizer = None
 
         self.img: np.ndarray = None
         self.detected_cars_info = None
         self.detected_persons_info = None
+        self.detected_faces: Dict[str, List] = None
 
     def set_frames(self, frames: FrameSource):
         self.frames = frames
@@ -117,6 +170,9 @@ class GUI:
     def set_car_recognizer(self, car_recognizer: CarRecognizer) -> None:
         self.car_recognizer = car_recognizer
     
+    def set_face_recognizer(self, face_recognizer: FaceRecognizer) -> None:
+        self.face_recognizer = face_recognizer
+
     def run(self) -> None:
         try:
             self._build_window()
@@ -196,7 +252,10 @@ class GUI:
             GUI.draw_bb(img, *car_bb, (250, 30, 30))
 
             if len(license_bb) == 5:
-                GUI.draw_bb(img, *license_bb[:4], (30, 30, 255), license_bb[4])
+                GUI.draw_bb(img, *license_bb[:4], (30, 30, 250), license_bb[4])
+
+        for face_id, face_bb in self.detected_faces.items():
+            GUI.draw_bb(img, *face_bb, (250, 250, 30), face_id)
 
         self.window[GUI.IMG_KEY].update(data=self._get_byte_frame(img))
 
@@ -220,6 +279,7 @@ class GUI:
     def _update_image(self, value: float) -> None:
         self.img = self.frames[int(value)]
         self.detected_cars_info, self.detected_persons_info = self.car_recognizer(self.img)
+        self.detected_faces = self.face_recognizer(self.img)
         
         self._draw_ui_image()
         
@@ -227,8 +287,6 @@ class GUI:
         
         img = cv2.resize(img, (int(GUI.IMG_H * img.shape[1] / img.shape[0]), GUI.IMG_H))
         return cv2.imencode(".png", img)[1].tobytes()
-
-
 
 
 def parse_args() -> Namespace:
@@ -241,10 +299,12 @@ def start_gui() -> None:
     args = parse_args()
     frames = FrameSource(args.video_file)
     car_detector = CarRecognizer()
+    face_recognizer = FaceRecognizer()
     
     window = GUI()
     window.set_frames(frames)
     window.set_car_recognizer(car_detector)
+    window.set_face_recognizer(face_recognizer)
 
     try:
         window.run()
